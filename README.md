@@ -1,6 +1,5 @@
 # Server to control simulatos, emulators and real devices.
 
-
 ## Install
 
 Install the node packages via:
