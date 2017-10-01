@@ -117,6 +117,11 @@ export class DevicesRoute extends BaseRoute {
 
   public static async refreshData(model: IModel) {
     DeviceManager.killAll(model);
+    
+    const deviceMaxUsageTime = process.env.MAX_USAGE_INTERVAL;
+    if (deviceMaxUsageTime && parseInt(deviceMaxUsageTime) !== NaN) {
+      DeviceManager.checkDeviceStatus(model, deviceMaxUsageTime);
+    }
     console.log("Data refreshed")
   }
 }

@@ -1,4 +1,5 @@
 import { IModel } from "../models/model";
+import { IDeviceModel } from "../models/device";
 import { Device, IDevice } from "devices-controller";
 export declare class DeviceManager {
     constructor();
@@ -8,8 +9,10 @@ export declare class DeviceManager {
     static getIOSDevices(): Map<string, Device>;
     static getAndroidDevices(): Map<string, IDevice>;
     static killDevice(obj: any, model: IModel): Promise<void>;
+    static killDeviceSingle(device: IDeviceModel, model: any): Promise<void>;
     static killAll(model: IModel, type?: string): Promise<void>;
     static refreshData(model: IModel, request: any): Promise<void>;
+    static checkDeviceStatus(model: IModel, maxUsageTime: any): void;
     private static findDevices(model, query);
     private static copyIDeviceModelToDevice(deviceModel, device?);
     private static copyDeviceToIDeviceModel(device, deviceModel);

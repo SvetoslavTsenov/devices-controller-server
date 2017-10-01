@@ -5,7 +5,9 @@ export var deviceSchema: Schema = new Schema({
   token: String,
   type: String,
   status: String,
+  holder: String,
   startedAt: Number,
+  startedUsageAt: Number,
   procPid: Number,
   apiLevel: String
 });

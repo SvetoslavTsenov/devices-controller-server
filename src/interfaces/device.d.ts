@@ -3,7 +3,9 @@ export interface IDevice {
     token: String;
     type: String;
     status?: String;
-    startedAt?: number;
-    procPid?: number;
+    holder?: String;
     apiLevel?: String;
+    startedAt?: number;
+    startedUsageAt?: number;
+    procPid?: number;
 }

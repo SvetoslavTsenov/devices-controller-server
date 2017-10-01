@@ -19,8 +19,8 @@ export class DeviceManager {
         const simName = process.env.SIM_NAMES;
         const emuName = process.env.EMU_NAMES;
 
-        await DeviceManager.bootIOSDevices(model, simName, count);
-        await DeviceManager.bootAndroidDevices(model, emuName, count);
+        await DeviceManager.bootIOSDevices(model, { "name": { "$regex": simName, "$options": "i" } }, count);
+        await DeviceManager.bootAndroidDevices(model, { "name": { "$regex": emuName, "$options": "i" } }, count);
     }
 
     public static async bootIOSDevices(model: IModel, query, count) {
@@ -34,10 +34,7 @@ export class DeviceManager {
             const sim = simulators[index];
             let device = DeviceManager.copyIDeviceModelToDevice(sim);
             await IOSManager.startSimulator(device);
-            model.device.update(sim, device.toJson(), (res, err) => {
-                console.log(res);
-                console.log(err);
-            });
+            await model.device.update(sim, device.toJson());
         }
     }
 
@@ -51,10 +48,7 @@ export class DeviceManager {
             const emu = emulators[index];
             let device = DeviceManager.copyIDeviceModelToDevice(emu);
             await AndroidManager.startEmulator(device);
-            model.device.update(emu, device.toJson(), (res, err) => {
-                console.log(res);
-                console.log(err);
-            });
+            await model.device.update(emu, device.toJson());
         }
     }
 
@@ -68,17 +62,28 @@ export class DeviceManager {
 
     public static async killDevice(obj, model: IModel) {
         const devices = await model.device.find(obj);
-        devices.forEach(device => {
-            if (device.type.toLowerCase().includes("sim") || device.type.toLowerCase().includes("ios")) {
-                IOSManager.kill(device.token.toString());
-            } else {
-                AndroidManager.kill(DeviceManager.copyIDeviceModelToDevice(device));
-            }
-
-            device.status = Status.SHUTDOWN;
-            device.startedAt = 0;
-            model.device.update(device, device.toJSON());
+        devices.forEach(async (device) => {
+            await DeviceManager.killDeviceSingle(device, model);
         });
+    }
+
+    public static async killDeviceSingle(device: IDeviceModel, model) {
+        const sim = DeviceManager.copyIDeviceModelToDevice(device);
+        if (device.type.toLowerCase().includes("sim") || device.type.toLowerCase().includes("ios")) {
+            IOSManager.kill(sim.token.toString());
+        } else {
+            AndroidManager.kill(sim);
+        }
+
+        sim.status = Status.SHUTDOWN;
+        sim.startedAt = -1;
+        sim.token = "";
+        const tempQuery: any = sim.toJson();
+        tempQuery.startedUsageAt = -1;
+        tempQuery.holder = -1;
+
+        const log = await model.device.update(device, sim.toJson());
+        console.log(log);
     }
 
     public static async killAll(model: IModel, type?: string) {
@@ -127,18 +132,25 @@ export class DeviceManager {
         }
     }
 
-    private static async findDevices(model: IModel, query) {
-        // let simulators = await model.device.find({
-        //     "name": { "$regex": name, "$options": "i" },
-        //     "status": { "$regex": "shutdown", "$options": "i" }
-        // }, (err, res) => {
-        //     console.log(err);
-        // });
+    public static checkDeviceStatus(model: IModel, maxUsageTime) {
+        setInterval(async () => {
+            const devices = await model.device.find().where("startedAt").gt(0);
+            devices.forEach(async (device) => {
+                const now = Date.now();
+                if (now - device.startedAt > maxUsageTime) {
+                    await DeviceManager.killDeviceSingle(device, model);
+                    if (device.type.includes("ios") || device.type.includes("sim")) {
+                        await DeviceManager.bootIOSDevices(model, { "name": device.name }, 1);
+                    } else {
+                        await DeviceManager.bootAndroidDevices(model, { "name": device.name }, 1);
+                    }
+                }
+            });
+        }, 300000);
+    }
 
-        let simulators = await model.device.find(query, (err, res) => {
-            console.log(err);
-            console.log(res);
-        });
+    private static async findDevices(model: IModel, query) {
+        const simulators = await model.device.find(query);
 
         return simulators;
     }
