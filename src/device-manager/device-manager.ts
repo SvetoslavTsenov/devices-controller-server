@@ -72,6 +72,8 @@ export class DeviceManager {
             const sim = simulators[index];
             await model.device.update(sim, udpateQuery);
         }
+
+        return simulators;
     }
 
     public static getIOSDevices() {

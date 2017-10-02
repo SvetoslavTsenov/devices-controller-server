@@ -68,8 +68,8 @@ export class DevicesRoute extends BaseRoute {
 
 
     const update = function (req, res, next) {
-      DeviceManager.update(model, req.params[0], req.query).then(() => {
-        res.json("Data is refreshed");
+      DeviceManager.update(model, req.params[0], req.query).then((devices) => {
+        res.json("Data is updated");
       })
     };
 
