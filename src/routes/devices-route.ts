@@ -4,6 +4,7 @@ import { IModel } from "../models/model";
 import { IDeviceModel } from "../models/device";
 import { DocumentQuery } from "mongoose";
 import { DeviceManager } from "../device-manager/device-manager";
+import { Platform } from "devices-controller";
 
 /**
  * / route
@@ -31,6 +32,51 @@ export class DevicesRoute extends BaseRoute {
       res.send("no query string");
     });
 
+    const bootIOSDeviceFilter = function (req, res, next) {
+      req.query.type = Platform.SIMULATOR;
+      const count = req.query.count || process.env.MAX_IOS_DEVICES_COUNT || 999;
+      DeviceManager.boot(model, req.query, count).then((value) => {
+        res.json("IOS emualtors are booted! " + value);
+      })
+    };
+
+    router.get("/devices/boot/ios", bootIOSDeviceFilter, (req: Request, res: Response, next: NextFunction) => {
+      res.json("IOS simulatorors are dead!");
+    });
+
+    const bootAndroidDeviceFilter = function (req, res, next) {
+      req.query.type = Platform.EMULATOR;
+      const count = req.query.count || process.env.MAX_ANDROID_DEVICES_COUNT || 9999;
+      DeviceManager.boot(model, req.query, req.query.count).then(() => {
+        res.json("Android emualtors are booted!");
+      })
+    };
+
+    router.get("/devices/boot/android", bootAndroidDeviceFilter, (req: Request, res: Response, next: NextFunction) => {
+      res.json("Android emulators failed to boot!");
+    });
+
+    const refreshFilter = function (req, res, next) {
+      DeviceManager.refreshData(model, req.query).then(() => {
+        res.json("Data is refreshed");
+      })
+    };
+
+    router.get("/devices/refresh", refreshFilter, (req: Request, res: Response, next: NextFunction) => {
+      res.json("Data failed to refresh!");
+    });
+
+
+    const update = function (req, res, next) {
+      DeviceManager.update(model, req.params[0], req.query).then(() => {
+        res.json("Data is refreshed");
+      })
+    };
+
+    router.get("/devices/update/*", update, (req: Request, res: Response, next: NextFunction) => {
+      res.json("Data failed to refresh!");
+    });
+
     router.get("/devices/killall", (req: Request, res: Response, next: NextFunction) => {
       DeviceManager.killAll(model);
       res.json("All simulators and emulators are dead!")
@@ -50,36 +96,6 @@ export class DevicesRoute extends BaseRoute {
       let query = req.query;
       await DeviceManager.killDevice(req.query, model);
       res.send("no query string");
-    });
-
-    const bootIOSDeviceFilter = function (req, res, next) {
-      DeviceManager.bootIOSDevices(model, req.query, req.query.count).then((value) => {
-        res.json("IOS emualtors are booted! " + value);
-      })
-    };
-
-    router.get("/devices/boot/ios", bootIOSDeviceFilter, (req: Request, res: Response, next: NextFunction) => {
-      res.json("IOS simulatorors are dead!");
-    });
-
-    const bootAndroidDeviceFilter = function (req, res, next) {
-      DeviceManager.bootAndroidDevices(model, req.query, req.query.count).then(() => {
-        res.json("Android emualtors are booted!");
-      })
-    };
-
-    router.get("/devices/boot/android", bootAndroidDeviceFilter, (req: Request, res: Response, next: NextFunction) => {
-      res.json("Android emulators failed to boot!");
-    });
-
-    const refreshFilter = function (req, res, next) {
-      DeviceManager.refreshData(model, req.query).then(() => {
-        res.json("Data is refreshed");
-      })
-    };
-
-    router.get("/devices/refresh", refreshFilter, (req: Request, res: Response, next: NextFunction) => {
-      res.json("Data failed to refresh!");
     });
   }
 
@@ -117,7 +133,7 @@ export class DevicesRoute extends BaseRoute {
 
   public static async refreshData(model: IModel) {
     DeviceManager.killAll(model);
-    
+
     const deviceMaxUsageTime = process.env.MAX_USAGE_INTERVAL;
     if (deviceMaxUsageTime && parseInt(deviceMaxUsageTime) !== NaN) {
       DeviceManager.checkDeviceStatus(model, deviceMaxUsageTime);

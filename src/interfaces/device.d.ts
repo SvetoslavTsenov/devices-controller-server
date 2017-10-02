@@ -3,7 +3,8 @@ export interface IDevice {
     token: String;
     type: String;
     status?: String;
-    holder?: String;
+    info?: String;
+    config?: String;
     apiLevel?: String;
     startedAt?: number;
     startedUsageAt?: number;

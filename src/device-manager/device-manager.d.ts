@@ -4,8 +4,8 @@ import { Device, IDevice } from "devices-controller";
 export declare class DeviceManager {
     constructor();
     static bootDevices(model: any): Promise<void>;
-    static bootIOSDevices(model: IModel, query: any, count: any): Promise<void>;
-    static bootAndroidDevices(model: IModel, query: any, count: any): Promise<void>;
+    static boot(model: IModel, query: any, count: any): Promise<void>;
+    static update(model: IModel, searchQuery: any, udpateQuery: any): Promise<void>;
     static getIOSDevices(): Map<string, Device>;
     static getAndroidDevices(): Map<string, IDevice>;
     static killDevice(obj: any, model: IModel): Promise<void>;

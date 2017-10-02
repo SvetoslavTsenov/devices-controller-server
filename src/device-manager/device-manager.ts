@@ -15,17 +15,21 @@ export class DeviceManager {
     constructor() { }
 
     public static async bootDevices(model) {
-        const count = process.env.MAX_IOS_DEVICE_COUNT;
+        const simsCount = process.env.MAX_IOS_DEVICES_COUNT;
+        const emusCount = process.env.MAX_ANDROID_DEVICES_COUNT;
         const simName = process.env.SIM_NAMES;
         const emuName = process.env.EMU_NAMES;
+        let query = {
+            "name": { "$regex": simName, "$options": "i" },
+            "type": Platform.SIMULATOR,
+        };
+        await DeviceManager.boot(model, query, simsCount);
 
-        await DeviceManager.bootIOSDevices(model, { "name": { "$regex": simName, "$options": "i" } }, count);
-        await DeviceManager.bootAndroidDevices(model, { "name": { "$regex": emuName, "$options": "i" } }, count);
+        query.type = Platform.ANDROID;
+        await DeviceManager.boot(model, query, emusCount);
     }
 
-    public static async bootIOSDevices(model: IModel, query, count) {
-        count = count || process.env.MAX_IOS_DEVICE_COUNT;
-        query.type = Platform.SIMULATOR;
+    public static async boot(model: IModel, query, count) {
         query.status = Status.SHUTDOWN;
         let simulators = await DeviceManager.findDevices(model, query);
 
@@ -33,22 +37,40 @@ export class DeviceManager {
         for (var index = 0; index < maxSimToBoot; index++) {
             const sim = simulators[index];
             let device = DeviceManager.copyIDeviceModelToDevice(sim);
-            await IOSManager.startSimulator(device);
+            const type = device.type.toLowerCase();
+            if (type.includes("ios") || type.includes("sim")) {
+                await IOSManager.startSimulator(device);
+            } else {
+                await AndroidManager.startEmulator(device);
+            }
             await model.device.update(sim, device.toJson());
         }
     }
 
-    public static async bootAndroidDevices(model: IModel, query, count) {
-        count = count || process.env.MAX_ANDROID_DEVICE_COUNT;
-        query.type = Platform.EMULATOR;
-        query.status = Status.SHUTDOWN;
-        let emulators = await DeviceManager.findDevices(model, query);
-        const emulatorCountToBoot = Math.min(emulators.length, parseInt(count || 1));
-        for (let index = 0; index < emulatorCountToBoot; index++) {
-            const emu = emulators[index];
-            let device = DeviceManager.copyIDeviceModelToDevice(emu);
-            await AndroidManager.startEmulator(device);
-            await model.device.update(emu, device.toJson());
+    public static async update(model: IModel, searchQuery, udpateQuery) {
+        const searchedObj: any = {};
+        searchQuery.split(",").forEach(element => {
+            let delimiter = "="
+            if (element.includes(":")) {
+                delimiter = ":";
+            }
+
+            const args = element.split(delimiter);
+            for (let index = 0; index < args.length - 1; index++) {
+                searchedObj[args[index]] = args[index + 1];
+            }
+        });
+
+        let simulators;
+        if (searchedObj.hasOwnProperty("id")) {
+            simulators = await model.device.findById(searchedObj["id"]);
+        } else {
+            simulators = await model.device.find(searchedObj);
+        }
+
+        for (var index = 0; index < simulators.length; index++) {
+            const sim = simulators[index];
+            await model.device.update(sim, udpateQuery);
         }
     }
 
@@ -139,11 +161,7 @@ export class DeviceManager {
                 const now = Date.now();
                 if (now - device.startedAt > maxUsageTime) {
                     await DeviceManager.killDeviceSingle(device, model);
-                    if (device.type.includes("ios") || device.type.includes("sim")) {
-                        await DeviceManager.bootIOSDevices(model, { "name": device.name }, 1);
-                    } else {
-                        await DeviceManager.bootAndroidDevices(model, { "name": device.name }, 1);
-                    }
+                    await DeviceManager.boot(model, { "name": device.name }, 1);
                 }
             });
         }, 300000);
