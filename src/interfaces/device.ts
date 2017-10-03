@@ -1,12 +1,13 @@
 export interface IDevice {
-  name: String,
-  token: String,
-  type: String,
-  status?: String,
-  info?: String,
-  config?: String,
-  apiLevel?: String,
+  name: string,
+  token: string,
+  type: string,
+  platform: string,
+  status?: string,
+  info?: string,
+  config?: string,
+  apiLevel?: string,
   startedAt?: number,
-  startedUsageAt?: number,
+  busySince?: number;
   procPid?: number,
 }

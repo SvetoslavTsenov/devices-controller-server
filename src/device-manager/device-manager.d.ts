@@ -1,13 +1,13 @@
 import { IModel } from "../models/model";
 import { IDeviceModel } from "../models/device";
-import { Device, IDevice } from "devices-controller";
+import { IDevice } from "devices-controller";
 export declare class DeviceManager {
     constructor();
     static bootDevices(model: any): Promise<void>;
     static boot(model: IModel, query: any, count: any): Promise<void>;
     static update(model: IModel, searchQuery: any, udpateQuery: any): Promise<any>;
-    static getIOSDevices(): Map<string, Device>;
-    static getAndroidDevices(): Map<string, IDevice>;
+    static getIOSDevices(): Map<string, IDevice[]>;
+    static getAndroidDevices(): Map<string, IDevice[]>;
     static killDevice(obj: any, model: IModel): Promise<void>;
     static killDeviceSingle(device: IDeviceModel, model: any): Promise<void>;
     static killAll(model: IModel, type?: string): Promise<void>;
@@ -17,5 +17,7 @@ export declare class DeviceManager {
     private static copyIDeviceModelToDevice(deviceModel, device?);
     private static copyDeviceToIDeviceModel(device, deviceModel);
     private static stringObjToPrimitiveConverter(obj);
-    private converArrayOfDevicesToIDeviceModel();
+    private static loadDBWithAndroidDevices(model);
+    private static loadDBWithIOSDevices(model);
+    private static createModel(model, device);
 }

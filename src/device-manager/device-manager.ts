@@ -7,6 +7,7 @@ import {
     Device,
     IDevice,
     Platform,
+    DeviceType,
     Status
 } from "devices-controller";
 
@@ -21,7 +22,7 @@ export class DeviceManager {
         const emuName = process.env.EMU_NAMES;
         let query = {
             "name": { "$regex": simName, "$options": "i" },
-            "type": Platform.SIMULATOR,
+            "type": DeviceType.SIMULATOR,
         };
         await DeviceManager.boot(model, query, simsCount);
 
@@ -38,9 +39,9 @@ export class DeviceManager {
             const sim = simulators[index];
             let device = DeviceManager.copyIDeviceModelToDevice(sim);
             const type = device.type.toLowerCase();
-            if (type.includes("ios") || type.includes("sim")) {
+            if (type.includes("sim")) {
                 await IOSManager.startSimulator(device);
-            } else {
+            } else if(type.includes("emu")) {
                 await AndroidManager.startEmulator(device);
             }
             await model.device.update(sim, device.toJson());
@@ -99,7 +100,7 @@ export class DeviceManager {
             AndroidManager.kill(sim);
         }
 
-        sim.status = Status.SHUTDOWN;
+        sim.status = "shutdown";
         sim.startedAt = -1;
         sim.token = "";
         const tempQuery: any = sim.toJson();
@@ -115,28 +116,19 @@ export class DeviceManager {
             await model.device.db.dropDatabase();
 
             IOSManager.killAll();
-            DeviceManager.getIOSDevices().forEach(async (device) => {
-                await model.device.create({ name: device.name, token: device.token, status: device.status, startedAt: device.startedAt, type: device.type, apiLevel: device.apiLevel });
-            });
+            await DeviceManager.loadDBWithIOSDevices(model);
 
             AndroidManager.killAll();
-            DeviceManager.getAndroidDevices().forEach(async (device) => {
-                await model.device.create({ name: device.name, token: device.token, status: device.status, startedAt: device.startedAt, type: device.type, apiLevel: device.apiLevel });
-            });
+            await DeviceManager.loadDBWithAndroidDevices(model);
         }
-
         if (type.includes("ios")) {
             IOSManager.killAll();
-            DeviceManager.getIOSDevices().forEach(async (device) => {
-                await model.device.create({ name: device.name, token: device.token, status: device.status, startedAt: device.startedAt, type: device.type, apiLevel: device.apiLevel });
-            });
+            await DeviceManager.loadDBWithIOSDevices(model);
         }
 
         if (type.includes("android")) {
             AndroidManager.killAll();
-            DeviceManager.getAndroidDevices().forEach(async (device) => {
-                await model.device.create({ name: device.name, token: device.token, status: device.status, startedAt: device.startedAt, type: device.type, apiLevel: device.apiLevel });
-            });
+            await DeviceManager.loadDBWithAndroidDevices(model);
         }
     }
 
@@ -144,15 +136,11 @@ export class DeviceManager {
         await model.device.remove(request);
 
         if (!request.type || request.type.includes("ios")) {
-            DeviceManager.getIOSDevices().forEach(async (device) => {
-                await model.device.create({ name: device.name, token: device.token, status: device.status, startedAt: device.startedAt, type: device.type, apiLevel: device.apiLevel });
-            });
+            await DeviceManager.loadDBWithIOSDevices(model);
         }
 
         if (!request.type || request.type.includes("android")) {
-            DeviceManager.getAndroidDevices().forEach(async (device) => {
-                await model.device.create({ name: device.name, token: device.token, status: device.status, startedAt: device.startedAt, type: device.type, apiLevel: device.apiLevel });
-            });
+            await DeviceManager.loadDBWithAndroidDevices(model);
         }
     }
 
@@ -181,6 +169,7 @@ export class DeviceManager {
                 DeviceManager.stringObjToPrimitiveConverter(deviceModel.name),
                 DeviceManager.stringObjToPrimitiveConverter(deviceModel.apiLevel),
                 DeviceManager.stringObjToPrimitiveConverter(deviceModel.type),
+                DeviceManager.stringObjToPrimitiveConverter(deviceModel.platform),
                 DeviceManager.stringObjToPrimitiveConverter(deviceModel.token),
                 DeviceManager.stringObjToPrimitiveConverter(deviceModel.status),
                 deviceModel.procPid)
@@ -191,6 +180,7 @@ export class DeviceManager {
             device.status = DeviceManager.stringObjToPrimitiveConverter(deviceModel.status);
             device.token = DeviceManager.stringObjToPrimitiveConverter(deviceModel.token);
             device.type = DeviceManager.stringObjToPrimitiveConverter(deviceModel.type);
+            device.platform = DeviceManager.stringObjToPrimitiveConverter(deviceModel.platform);
             device.apiLevel = DeviceManager.stringObjToPrimitiveConverter(deviceModel.apiLevel);
         }
 
@@ -212,11 +202,37 @@ export class DeviceManager {
         if (obj) {
             value = obj + "";
         }
-
         return value;
     }
 
-    private converArrayOfDevicesToIDeviceModel() {
+    private static loadDBWithAndroidDevices(model: IModel) {
+        DeviceManager.getAndroidDevices().forEach(async (devices) => {
+            devices.forEach(async (device) => {
+                await DeviceManager.createModel(model, device);
+            });
+        });
+    }
 
+    private static loadDBWithIOSDevices(model: IModel) {
+        DeviceManager.getIOSDevices().forEach(async (devices) => {
+            devices.forEach(async (device) => {
+                await DeviceManager.createModel(model, device);
+            });
+        });
+    }
+
+    private static async createModel(model, device: IDevice) {
+        await model.device.create({
+            name: device.name,
+            token: device.token,
+            status: device.status,
+            startedAt: device.startedAt,
+            busySince: device.busySince,
+            type: device.type,
+            platform: device.platform,
+            info: device.info,
+            config: device.config,
+            apiLevel: device.apiLevel
+        });
     }
 }

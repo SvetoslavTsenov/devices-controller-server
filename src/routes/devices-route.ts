@@ -4,7 +4,7 @@ import { IModel } from "../models/model";
 import { IDeviceModel } from "../models/device";
 import { DocumentQuery } from "mongoose";
 import { DeviceManager } from "../device-manager/device-manager";
-import { Platform } from "devices-controller";
+import { Platform, DeviceType } from "devices-controller";
 
 /**
  * / route
@@ -33,7 +33,7 @@ export class DevicesRoute extends BaseRoute {
     });
 
     const bootIOSDeviceFilter = function (req, res, next) {
-      req.query.type = Platform.SIMULATOR;
+      req.query.platform = Platform.IOS;
       const count = req.query.count || process.env.MAX_IOS_DEVICES_COUNT || 999;
       DeviceManager.boot(model, req.query, count).then((value) => {
         res.json("IOS emualtors are booted! " + value);
@@ -45,7 +45,7 @@ export class DevicesRoute extends BaseRoute {
     });
 
     const bootAndroidDeviceFilter = function (req, res, next) {
-      req.query.type = Platform.EMULATOR;
+      req.query.platform = Platform.ANDROID;
       const count = req.query.count || process.env.MAX_ANDROID_DEVICES_COUNT || 9999;
       DeviceManager.boot(model, req.query, req.query.count).then(() => {
         res.json("Android emualtors are booted!");
