@@ -1,3 +1,5 @@
+# This project is moved to https://github.com/NativeScript/mobile-devices-controller-server
+
 # Server to control simulatos, emulators and real devices.
 
 ## Install
